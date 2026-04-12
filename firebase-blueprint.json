@@ -1,7 +1,24 @@
 {
   "entities": {
+    "UserProgress": {
+      "title": "User Progress",
+      "description": "Tracks a user's score and completed chapters.",
+      "type": "object",
+      "properties": {
+        "score": {
+          "type": "number",
+          "description": "The total score/flame points earned by the user."
+        },
+        "completedChapters": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of chapter IDs the user has completed."
+        }
+      },
+      "required": ["score", "completedChapters"]
+    },
     "ChatMessage": {
-      "title": "ChatMessage",
+      "title": "Chat Message",
       "description": "A message sent in the global chat.",
       "type": "object",
       "properties": {
@@ -13,47 +30,16 @@
         "timestamp": { "type": "number" }
       },
       "required": ["campusId", "text", "sender", "uid", "time", "timestamp"]
-    },
-    "UserProgress": {
-      "title": "UserProgress",
-      "description": "The progress of a user in the app.",
-      "type": "object",
-      "properties": {
-        "score": { "type": "number" },
-        "completedChapters": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
-      },
-      "required": ["score", "completedChapters"]
-    },
-    "Recipe": {
-      "title": "Recipe",
-      "description": "A recipe created by a user.",
-      "type": "object",
-      "properties": {
-        "title": { "type": "string" },
-        "ingredients": { "type": "string" },
-        "instructions": { "type": "string" },
-        "authorUid": { "type": "string" },
-        "authorName": { "type": "string" },
-        "timestamp": { "type": "number" }
-      },
-      "required": ["title", "ingredients", "instructions", "authorUid", "authorName", "timestamp"]
     }
   },
   "firestore": {
-    "/artifacts/{appId}/public/data/chat_messages/{messageId}": {
+    "/artifacts/hospi-scholar-app/users/{userId}/user_data/progress": {
+      "schema": "UserProgress",
+      "description": "User-specific progress data."
+    },
+    "/artifacts/hospi-scholar-app/public/data/chat_messages/{messageId}": {
       "schema": "ChatMessage",
       "description": "Global chat messages."
-    },
-    "/artifacts/{appId}/users/{userId}/user_data/progress": {
-      "schema": "UserProgress",
-      "description": "User specific progress data."
-    },
-    "/artifacts/{appId}/public/data/recipes/{recipeId}": {
-      "schema": "Recipe",
-      "description": "Shared recipes."
     }
   }
 }
