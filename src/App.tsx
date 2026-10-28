@@ -7,13 +7,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, GraduationCap, Sparkles, Utensils, Briefcase, 
   Newspaper, MessageSquare, Trophy, User, LogOut, Moon, Sun,
-  Menu, X, ChevronRight, Search, Bell, Settings, Globe, ChefHat, Brain, ShieldCheck
+  Menu, X, ChevronRight, Search, Bell, Settings, Globe, ChefHat, Brain, ShieldCheck, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
-import { auth, db, appId } from './firebase';
+import { auth, db, appId, recordGuestVisit } from './firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { LoginPage } from './components/LoginPage';
+import { GuestTrackerView } from './components/GuestTrackerView';
 import { 
   AcademicsView, AITutorView, RecipeExchangeView, InternshipLogView,
   SemesterDetail, SubjectDetail, NewsFeed, GlobalChatView, 
@@ -26,21 +27,56 @@ interface UserProgress {
   completedChapters: string[];
 }
 
-
 // --- COMPONENTS ---
 
-const Header = ({ isDark, setIsDark, user }: { isDark: boolean, setIsDark: (v: boolean) => void, user: any }) => (
+const Header = ({ 
+  isDark, 
+  setIsDark, 
+  user, 
+  activeTab, 
+  setActiveTab 
+}: { 
+  isDark: boolean, 
+  setIsDark: (v: boolean) => void, 
+  user: any,
+  activeTab: string,
+  setActiveTab: (tab: string) => void
+}) => (
   <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 border-b border-slate-100 dark:border-slate-800 px-6 py-4 flex justify-between items-center md:hidden transition-colors">
     <div className="flex items-center gap-3">
       <Logo size="sm" />
       <LogoText className="text-lg" />
     </div>
-    <div className="flex items-center gap-4">
-      <button onClick={() => setIsDark(!isDark)} className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+    <div className="flex items-center gap-3">
+      <button 
+        onClick={() => setActiveTab('guest-tracker')}
+        className={`p-2 rounded-full transition-colors flex items-center gap-1.5 text-xs font-semibold ${
+          activeTab === 'guest-tracker' 
+            ? 'bg-indigo-600 text-white' 
+            : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+        }`}
+        title="Live Guest Tracker"
+      >
+        <Users className="w-4 h-4" />
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+      </button>
+
+      <button 
+        onClick={() => setIsDark(!isDark)} 
+        className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+      >
          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
       </button>
-      <div className="w-9 h-9 rounded-full bg-indigo-100 border-2 border-white dark:border-slate-800 shadow-sm flex items-center justify-center overflow-hidden">
-        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.uid || 'Guest'}`} alt="Profile" className="w-full h-full object-cover" />
+
+      <div 
+        onClick={() => setActiveTab('profile')}
+        className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-slate-800 border-2 border-white dark:border-slate-700 shadow-sm flex items-center justify-center overflow-hidden cursor-pointer"
+      >
+        {user?.photoURL ? (
+          <img src={user.photoURL} alt="Profile" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+        ) : (
+          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.uid || 'Guest'}`} alt="Profile" className="w-full h-full object-cover" />
+        )}
       </div>
     </div>
   </header>
@@ -49,6 +85,7 @@ const Header = ({ isDark, setIsDark, user }: { isDark: boolean, setIsDark: (v: b
 const DesktopSidebar = ({ activeTab, setActiveTab, isDark, setIsDark, user }: any) => {
   const navItems = [
     { id: 'academics', label: 'Academics', icon: GraduationCap },
+    { id: 'guest-tracker', label: 'Guest Tracker', icon: Users, badge: 'Live' },
     { id: 'news', label: 'News', icon: Newspaper },
     { id: 'chat', label: 'Global Chat', icon: MessageSquare },
     { id: 'ai-tutor', label: 'AI Tutor', icon: Sparkles },
@@ -58,6 +95,11 @@ const DesktopSidebar = ({ activeTab, setActiveTab, isDark, setIsDark, user }: an
     { id: 'trivia', label: 'Daily Trivia', icon: Brain },
     { id: 'profile', label: 'My Profile', icon: User }
   ];
+
+  const userDisplayName = user?.displayName || (user?.email ? user.email.split('@')[0] : (user?.isGuest ? 'Guest Scholar' : 'Hospitality Scholar'));
+  const userSubtitle = user?.isAdmin 
+    ? 'System Administrator' 
+    : (user?.isGuest ? 'Guest Scholar • Explorer' : 'Google Scholar • B.Sc. HHA');
 
   return (
     <aside className="hidden md:flex flex-col w-72 bg-slate-900 dark:bg-slate-950 text-slate-300 border-r border-slate-800 shrink-0 transition-colors">
@@ -71,14 +113,23 @@ const DesktopSidebar = ({ activeTab, setActiveTab, isDark, setIsDark, user }: an
         </button>
       </div>
 
-      <div className="px-6 mb-8">
-        <div className="bg-slate-800 dark:bg-slate-900 rounded-xl p-4 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden shrink-0">
-            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.uid || 'Guest'}`} alt="Profile" className="w-full h-full object-cover" />
+      <div className="px-6 mb-6">
+        <div className="bg-slate-800 dark:bg-slate-900 rounded-2xl p-4 flex items-center gap-3.5 border border-slate-750">
+          <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden shrink-0 border border-slate-700">
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="Profile" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+            ) : (
+              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.uid || 'Guest'}`} alt="Profile" className="w-full h-full object-cover" />
+            )}
           </div>
-          <div>
-            <div className="text-white font-semibold text-sm">{user?.isAnonymous ? 'Guest Scholar' : 'Rahul Sharma'}</div>
-            <div className="text-indigo-400 text-xs font-medium">B.Sc. HHA • Sem 4</div>
+          <div className="min-w-0">
+            <div className="text-white font-semibold text-sm truncate flex items-center gap-1.5">
+              <span>{userDisplayName}</span>
+              {user?.photoURL && (
+                <img src="https://www.google.com/favicon.ico" alt="G" className="w-3 h-3 shrink-0" />
+              )}
+            </div>
+            <div className="text-indigo-400 text-xs font-medium truncate">{userSubtitle}</div>
           </div>
         </div>
       </div>
@@ -91,14 +142,26 @@ const DesktopSidebar = ({ activeTab, setActiveTab, isDark, setIsDark, user }: an
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
                 isActive 
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' 
                 : 'hover:bg-slate-800 hover:text-white dark:hover:bg-slate-900'
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-200' : 'text-slate-400'}`} />
-              <span className="font-medium text-sm">{item.label}</span>
+              <div className="flex items-center gap-3">
+                <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-200' : 'text-slate-400'}`} />
+                <span className="font-medium text-sm">{item.label}</span>
+              </div>
+              {item.badge && (
+                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                  isActive 
+                    ? 'bg-indigo-700 text-white' 
+                    : 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40'
+                }`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  {item.badge}
+                </span>
+              )}
             </button>
           )
         })}
@@ -110,10 +173,10 @@ const DesktopSidebar = ({ activeTab, setActiveTab, isDark, setIsDark, user }: an
 const MobileBottomNav = ({ activeTab, setActiveTab }: any) => {
   const navItems = [
     { id: 'academics', label: 'Academics', icon: GraduationCap },
+    { id: 'guest-tracker', label: 'Guests', icon: Users },
     { id: 'mt-prep', label: 'MT Prep', icon: ShieldCheck },
     { id: 'news', label: 'News', icon: Newspaper },
     { id: 'chat', label: 'Chat', icon: MessageSquare },
-    { id: 'ai-tutor', label: 'AI', icon: Sparkles },
     { id: 'profile', label: 'Profile', icon: User }
   ];
 
@@ -156,17 +219,63 @@ export default function App() {
   }, [isDark]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      if (u) {
-        setUser(u);
-      } else {
-        const saved = localStorage.getItem('hospi_scholar_user');
-        if (saved) setUser(JSON.parse(saved));
-        else setUser(null);
+    let isMounted = true;
+    try {
+      const saved = localStorage.getItem('hospi_scholar_user');
+      if (saved) {
+        setUser(JSON.parse(saved));
       }
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    } catch (e) {
+      console.warn("Could not read local storage:", e);
+    }
+
+    // Safety timeout in case Firebase Auth hangs or is blocked in cross-origin environments
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 1200);
+
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (u) => {
+        if (!isMounted) return;
+        clearTimeout(safetyTimer);
+        if (u) {
+          setUser(u);
+          localStorage.removeItem('hospi_scholar_user');
+          // Track active signed-in session in Firestore
+          await recordGuestVisit({
+            name: u.displayName || u.email || 'Google Scholar',
+            email: u.email || '',
+            photoURL: u.photoURL || '',
+            method: 'google',
+            status: 'signed_in',
+            uid: u.uid
+          });
+        } else {
+          try {
+            const saved = localStorage.getItem('hospi_scholar_user');
+            if (saved) setUser(JSON.parse(saved));
+            else setUser(null);
+          } catch {
+            setUser(null);
+          }
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.warn("Auth state error:", error);
+        if (isMounted) {
+          clearTimeout(safetyTimer);
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+      unsubscribe();
+    };
   }, []);
 
   const handleAdminLogin = () => {
@@ -181,23 +290,43 @@ export default function App() {
     localStorage.setItem('hospi_scholar_user', JSON.stringify(adminUser));
   };
 
+  const handleGuestLogin = (guestUser: any) => {
+    setUser(guestUser);
+    localStorage.setItem('hospi_scholar_user', JSON.stringify(guestUser));
+  };
+
   const handleLogout = async () => {
-    await signOut(auth);
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.warn("Logout error:", e);
+    }
     localStorage.removeItem('hospi_scholar_user');
     setUser(null);
   };
 
   useEffect(() => {
-    if (!db || !user) return;
-    const progressRef = doc(db, 'artifacts', appId, 'users', user.uid, 'user_data', 'progress');
-    return onSnapshot(progressRef, (docSnap) => {
-      if (docSnap.exists()) setProgress(docSnap.data() as UserProgress);
-    });
+    if (!db || !user?.uid) return;
+    try {
+      const progressRef = doc(db, 'artifacts', appId, 'users', user.uid, 'user_data', 'progress');
+      const unsubscribe = onSnapshot(
+        progressRef, 
+        (docSnap) => {
+          if (docSnap.exists()) setProgress(docSnap.data() as UserProgress);
+        },
+        (error) => {
+          console.warn("Progress snapshot error:", error);
+        }
+      );
+      return () => unsubscribe();
+    } catch (err) {
+      console.warn("Error setting up progress listener:", err);
+    }
   }, [user]);
 
   const updateProgress = async (newProgress: UserProgress) => {
     setProgress(newProgress);
-    if (!db || !user) return;
+    if (!db || !user?.uid) return;
     try {
       const progressRef = doc(db, 'artifacts', appId, 'users', user.uid, 'user_data', 'progress');
       await setDoc(progressRef, newProgress, { merge: true });
@@ -212,6 +341,8 @@ export default function App() {
         if (selectedSubject) return <SubjectDetail subject={selectedSubject} onBack={() => setSelectedSubject(null)} progress={progress} updateProgress={updateProgress} />;
         if (selectedSem) return <SemesterDetail semId={selectedSem} onBack={() => setSelectedSem(null)} onSelectSubject={setSelectedSubject} />;
         return <AcademicsView onSelectSem={setSelectedSem} />;
+      case 'guest-tracker':
+        return <GuestTrackerView currentUser={user} />;
       case 'news':
         return <NewsFeed />;
       case 'chat':
@@ -239,13 +370,18 @@ export default function App() {
     </div>
   );
 
-  if (!user) return <LoginPage onAdminLogin={handleAdminLogin} />;
+  if (!user) return (
+    <LoginPage 
+      onAdminLogin={handleAdminLogin} 
+      onGuestLogin={handleGuestLogin} 
+    />
+  );
 
   return (
     <div className="flex h-screen bg-slate-50/50 dark:bg-slate-950 font-sans overflow-hidden text-slate-900 dark:text-slate-100 transition-colors">
        <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} isDark={isDark} setIsDark={setIsDark} user={user} />
        <main className="flex-1 overflow-y-auto pb-24 md:pb-0 relative">
-          <Header isDark={isDark} setIsDark={setIsDark} user={user} />
+          <Header isDark={isDark} setIsDark={setIsDark} user={user} activeTab={activeTab} setActiveTab={setActiveTab} />
           <div className="p-6 md:p-10 max-w-6xl mx-auto">
              {renderContent()}
           </div>
@@ -254,4 +390,3 @@ export default function App() {
     </div>
   );
 }
-

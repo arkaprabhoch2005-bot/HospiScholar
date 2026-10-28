@@ -3,7 +3,8 @@ import {
   BookOpen, ChevronRight, ArrowLeft, Calendar, FileText, Bookmark, 
   ShieldCheck, CheckCircle, RotateCw, Camera, GraduationCap, X, Download,
   Trophy, Flame, Send, Sparkles, Plus, Trash2, Newspaper, MessageSquare,
-  Briefcase, LogOut, Wine, Search, Utensils
+  Briefcase, LogOut, Wine, Search, Utensils, ExternalLink, Radio, Globe, 
+  Clock, Tag, RefreshCw, Zap, Filter, CheckCircle2, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -14,7 +15,6 @@ import { db, appId } from '../firebase';
 import { 
   collection, addDoc, onSnapshot, query, orderBy, limit, doc, deleteDoc, Timestamp 
 } from 'firebase/firestore';
-import { getGemini } from '../lib/gemini';
 
 export interface Recipe {
   id?: string;
@@ -80,12 +80,13 @@ export const AITutorView = () => {
     setLoading(true);
 
     try {
-      const ai = getGemini();
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const prompt = `You are a professional hospitality and culinary tutor for IHM students. Answer the following question accurately and professionally: ${userMsg}`;
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      setMessages(prev => [...prev, { role: 'ai', text: response.text() || "I couldn't generate a response." }]);
+      const res = await fetch('/api/ai/tutor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: userMsg }),
+      });
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: 'ai', text: data.answer || "I couldn't generate a response." }]);
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev, { role: 'ai', text: "Sorry, I'm having trouble connecting right now. Please try again later." }]);
@@ -153,9 +154,15 @@ export const RecipeExchangeView = ({ user }: { user: any }) => {
   useEffect(() => {
     if (!db) return;
     const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'recipes'), orderBy('timestamp', 'desc'), limit(20));
-    return onSnapshot(q, (snapshot) => {
-      setRecipes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Recipe)));
-    });
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        setRecipes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Recipe)));
+      },
+      (err) => {
+        console.warn("Recipes listener warning:", err);
+      }
+    );
   }, []);
 
   const handleAdd = async () => {
@@ -246,9 +253,15 @@ export const InternshipLogView = ({ user }: { user: any }) => {
   useEffect(() => {
     if (!db || !user) return;
     const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'internship_log'), orderBy('date', 'desc'));
-    return onSnapshot(q, (snapshot) => {
-      setEntries(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InternshipEntry)));
-    });
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        setEntries(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InternshipEntry)));
+      },
+      (err) => {
+        console.warn("Internship log listener warning:", err);
+      }
+    );
   }, [user]);
 
   const handleAdd = async () => {
@@ -458,109 +471,459 @@ export const SubjectDetail = ({ subject, onBack, progress, updateProgress }: any
 };
 
 export const NewsFeed = () => {
-  const [activeSubTab, setActiveSubTab] = useState('industry');
+  const [activeSubTab, setActiveSubTab] = useState<'industry' | 'current_affairs'>('industry');
   const [liveNews, setLiveNews] = useState<any[]>([]);
+  const [groundingInfo, setGroundingInfo] = useState<{ searchQueries: string[]; sources: { title: string; uri: string }[] }>({
+    searchQueries: [],
+    sources: [],
+  });
   const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [autoSync, setAutoSync] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSources, setShowSources] = useState(false);
+  const [secondsAgo, setSecondsAgo] = useState(0);
 
+  // Initial load
   useEffect(() => {
-    if (activeSubTab === 'industry') {
-      fetchLiveNews();
-    }
-  }, [activeSubTab]);
+    fetchLiveNews(false);
+  }, []);
 
-  const fetchLiveNews = async () => {
+  // Background timer for relative last updated calculation
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsAgo(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Auto-sync polling every 120 seconds (2 minutes)
+  useEffect(() => {
+    if (!autoSync) return;
+    const interval = setInterval(() => {
+      fetchLiveNews(true);
+    }, 120000);
+    return () => clearInterval(interval);
+  }, [autoSync]);
+
+  const fetchLiveNews = async (forceRefresh = false) => {
     setLoading(true);
     try {
-      const ai = getGemini();
-      // Using gemini-1.5-flash which is fast and reliable
-      const model = ai.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-      });
-      
-      const prompt = `You are a hospitality news expert. Search for and generate 5 REAL, CURRENT hospitality industry news headlines for India for today, ${new Date().toLocaleDateString()}. 
-      Focus on major hotel chains (Taj, Oberoi, ITC, Marriott India), F&B trends, or government tourism policies.
-      Return them as a JSON array of objects with fields: id (number), title (string), summary (string), date (string), category (string), imageUrl (string). 
-      Use high-quality Unsplash URLs for imageUrl. 
-      Ensure the response is ONLY the JSON array.`;
-      
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      const jsonStr = text.match(/\[.*\]/s)?.[0] || text;
-      const parsed = JSON.parse(jsonStr);
-      setLiveNews(parsed);
+      const url = `/api/news/live${forceRefresh ? '?refresh=true' : ''}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.articles && Array.isArray(data.articles)) {
+        setLiveNews(data.articles);
+      }
+      if (data.grounding) {
+        setGroundingInfo(data.grounding);
+      }
+      setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setSecondsAgo(0);
     } catch (err) {
-      console.error("Error fetching live news:", err);
-      setLiveNews(newsArticles);
+      console.warn("Could not fetch real-time news from server, using local feed:", err);
+      if (liveNews.length === 0) {
+        setLiveNews(newsArticles);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const categories = [
+    'All',
+    'Industry',
+    'Hospitality Tech',
+    'Luxury & Resorts',
+    'F&B Trends',
+    'Sustainability',
+    'Aviation & Tourism'
+  ];
+
+  const filteredNews = liveNews.filter(article => {
+    const matchesCategory = selectedCategory === 'All' || article.category?.toLowerCase() === selectedCategory.toLowerCase();
+    const matchesSearch = !searchQuery.trim() || 
+      article.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      article.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (article.tags && article.tags.some((t: string) => t.toLowerCase().includes(searchQuery.toLowerCase())));
+    return matchesCategory && matchesSearch;
+  });
+
+  const getCategoryColor = (cat: string) => {
+    switch (cat?.toLowerCase()) {
+      case 'hospitality tech':
+        return 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border-violet-200 dark:border-violet-800';
+      case 'sustainability':
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+      case 'luxury & resorts':
+        return 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+      case 'f&b trends':
+        return 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+      case 'aviation & tourism':
+        return 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800';
+      default:
+        return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800';
+    }
+  };
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">News & Current Affairs</h1>
-          <p className="text-slate-500 dark:text-slate-400">Stay informed with the latest hospitality news.</p>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      {/* Header with Live Status & Controls */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 md:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden border border-slate-800">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div>
+            <div className="flex flex-wrap items-center gap-3 mb-2">
+              <span className="inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                Live Wire
+              </span>
+
+              <span className="inline-flex items-center gap-1.5 bg-indigo-500/20 text-indigo-200 border border-indigo-400/30 px-3 py-1 rounded-full text-xs font-semibold">
+                <Globe className="w-3.5 h-3.5 text-indigo-300" />
+                Google Search Grounded
+              </span>
+
+              <span className="text-xs text-slate-400 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
+                {secondsAgo < 5 ? "Synced just now" : `Synced ${secondsAgo}s ago`} {lastUpdated ? `(${lastUpdated})` : ''}
+              </span>
+            </div>
+
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Hospitality Industry Live Wire</h1>
+            <p className="text-slate-300 text-sm mt-1 max-w-2xl leading-relaxed">
+              Real-time breaking developments across global luxury chains, Indian hotel markets, culinary trends, and hospitality technologies, constantly updated via Google Search Grounding.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            {/* Auto-Sync Toggle */}
+            <button
+              onClick={() => setAutoSync(!autoSync)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
+                autoSync 
+                  ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/60' 
+                  : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-slate-800'
+              }`}
+              title="Toggle automatic real-time sync every 2 minutes"
+            >
+              <Radio className={`w-3.5 h-3.5 ${autoSync ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
+              Auto-Sync: {autoSync ? 'ON' : 'PAUSED'}
+            </button>
+
+            {/* Force Refresh Button */}
+            <button
+              onClick={() => fetchLiveNews(true)}
+              disabled={loading}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-indigo-500/20 disabled:opacity-50"
+            >
+              <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Grounding Live Data...' : 'Sync Now'}
+            </button>
+          </div>
         </div>
-        {activeSubTab === 'industry' && (
-          <button 
-            onClick={fetchLiveNews}
-            disabled={loading}
-            className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
-          >
-            <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh Feed
-          </button>
+
+        {/* Search Grounding Queries Pill Strip */}
+        {groundingInfo.searchQueries && groundingInfo.searchQueries.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              Live Search Queries:
+            </span>
+            {groundingInfo.searchQueries.map((q, idx) => (
+              <span key={idx} className="bg-slate-800/90 text-indigo-200 border border-slate-700/80 text-xs px-2.5 py-1 rounded-lg font-mono">
+                "{q}"
+              </span>
+            ))}
+          </div>
         )}
       </div>
-      
-      <div className="flex gap-6 border-b border-slate-200 dark:border-slate-800">
-        <button
-          onClick={() => setActiveSubTab('industry')}
-          className={`pb-4 font-bold transition-all border-b-2 ${activeSubTab === 'industry' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'}`}
-        >
-          Industry News
-        </button>
-        <button
-          onClick={() => setActiveSubTab('current_affairs')}
-          className={`pb-4 font-bold transition-all border-b-2 ${activeSubTab === 'current_affairs' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'}`}
-        >
-          Current Affairs
-        </button>
+
+      {/* Verified Web Sources Dropdown Accordion */}
+      {groundingInfo.sources && groundingInfo.sources.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+          <button
+            onClick={() => setShowSources(!showSources)}
+            className="w-full px-5 py-3.5 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
+          >
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">
+              <Globe className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span>Verified Google Search Grounded Web Sources ({groundingInfo.sources.length})</span>
+              <span className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs px-2 py-0.5 rounded-full font-semibold">
+                Authentic Citations
+              </span>
+            </div>
+            {showSources ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </button>
+
+          <AnimatePresence>
+            {showSources && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="px-5 pb-4 border-t border-slate-100 dark:border-slate-700/60"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                  {groundingInfo.sources.map((src, i) => (
+                    <a
+                      key={i}
+                      href={src.uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-100 dark:border-slate-700/80 group transition-all text-xs"
+                    >
+                      <span className="font-medium text-slate-700 dark:text-slate-300 truncate mr-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                        {src.title || src.uri}
+                      </span>
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 shrink-0" />
+                    </a>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Main Subtabs Navigation */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <div className="flex gap-4">
+          <button
+            onClick={() => setActiveSubTab('industry')}
+            className={`pb-3 font-bold text-sm transition-all border-b-2 flex items-center gap-2 ${
+              activeSubTab === 'industry'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
+          >
+            <Newspaper className="w-4 h-4" />
+            Live Industry Stream
+            <span className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs px-2 py-0.5 rounded-full font-black">
+              {liveNews.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('current_affairs')}
+            className={`pb-3 font-bold text-sm transition-all border-b-2 flex items-center gap-2 ${
+              activeSubTab === 'current_affairs'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            Curriculum Current Affairs
+            <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs px-2 py-0.5 rounded-full font-bold">
+              {ongoingCurrentAffairs.length}
+            </span>
+          </button>
+        </div>
+
+        {activeSubTab === 'industry' && (
+          <div className="flex items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search headlines or tags..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs pl-9 pr-3 py-2 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 border border-transparent dark:border-slate-700 transition-all"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {loading && liveNews.length === 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-white dark:bg-slate-800 rounded-3xl h-80 animate-pulse border border-slate-100 dark:border-slate-700"></div>
+      {/* Category Pills Strip */}
+      {activeSubTab === 'industry' && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
+          {categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                selectedCategory === cat
+                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-500/20'
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
+              }`}
+            >
+              {cat}
+            </button>
           ))}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {activeSubTab === 'industry' ? (
-            (liveNews.length > 0 ? liveNews : newsArticles).map(article => (
-              <article key={article.id} className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 group">
-                <div className="h-48 overflow-hidden">
-                  <img src={article.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+      )}
+
+      {/* Content Stream */}
+      {activeSubTab === 'industry' ? (
+        <div>
+          {loading && liveNews.length === 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-white dark:bg-slate-800 rounded-3xl h-96 animate-pulse border border-slate-100 dark:border-slate-700 p-6 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="h-44 bg-slate-200 dark:bg-slate-700 rounded-2xl w-full"></div>
+                    <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded-md w-3/4"></div>
+                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-md w-full"></div>
+                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-md w-5/6"></div>
+                  </div>
+                  <div className="h-8 bg-slate-100 dark:bg-slate-750 rounded-xl w-1/3"></div>
                 </div>
-                <div className="p-6">
-                  <div className="text-xs font-bold text-indigo-600 mb-2 uppercase">{article.category}</div>
-                  <h3 className="text-xl font-bold mb-2 dark:text-white">{article.title}</h3>
-                  <p className="text-sm text-slate-500 mb-4">{article.summary}</p>
-                  <div className="text-xs text-slate-400">{article.date}</div>
-                </div>
-              </article>
-            ))
+              ))}
+            </div>
+          ) : filteredNews.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {filteredNews.map(article => (
+                <article
+                  key={article.id}
+                  className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm hover:shadow-md border border-slate-100 dark:border-slate-700/80 flex flex-col transition-all group"
+                >
+                  {/* Image with Category & Time Pill */}
+                  <div className="h-48 relative overflow-hidden bg-slate-100 dark:bg-slate-900">
+                    <img
+                      src={article.imageUrl || "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1000&q=80"}
+                      alt={article.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent"></div>
+
+                    <div className="absolute top-3 left-3 flex items-center gap-2">
+                      <span className={`text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border shadow-sm ${getCategoryColor(article.category)}`}>
+                        {article.category || 'Hospitality'}
+                      </span>
+                    </div>
+
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs">
+                      <span className="font-bold flex items-center gap-1.5 drop-shadow">
+                        <Clock className="w-3.5 h-3.5 text-indigo-300" />
+                        {article.publishedAt || article.date || 'Live update'}
+                      </span>
+                      {article.sourceName && (
+                        <span className="bg-black/60 backdrop-blur-md px-2.5 py-0.5 rounded-md font-semibold text-[11px] text-slate-200">
+                          {article.sourceName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="space-y-3">
+                      <h3 className="text-lg md:text-xl font-bold text-slate-800 dark:text-white leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        {article.title}
+                      </h3>
+
+                      <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {article.summary}
+                      </p>
+
+                      {/* Hospitality Academic / Practical Takeaway */}
+                      {article.keyTakeaway && (
+                        <div className="bg-indigo-50/70 dark:bg-indigo-950/30 p-3.5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50">
+                          <div className="flex items-start gap-2">
+                            <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                            <div className="text-xs">
+                              <span className="font-bold text-indigo-900 dark:text-indigo-200 block mb-0.5">
+                                Industry Takeaway for IHM Students:
+                              </span>
+                              <span className="text-indigo-800 dark:text-indigo-300/90 leading-relaxed">
+                                {article.keyTakeaway}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer with Tags and Source Link */}
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {article.tags && article.tags.map((tag: string, tIdx: number) => (
+                          <span
+                            key={tIdx}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium bg-slate-100 dark:bg-slate-750 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-md"
+                          >
+                            <Tag className="w-2.5 h-2.5 opacity-60" />
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      {article.sourceUrl && (
+                        <a
+                          href={article.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline shrink-0"
+                        >
+                          <span>Full Coverage</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
           ) : (
-            ongoingCurrentAffairs.map(item => (
-              <div key={item.id} className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700">
-                <h3 className="font-bold text-lg mb-2 dark:text-white">{item.topic}</h3>
-                <p className="text-sm text-slate-500">{item.details}</p>
-              </div>
-            ))
+            <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-8">
+              <Search className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">No matching news articles found</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Try resetting your filter or searching for another term.</p>
+              <button
+                onClick={() => { setSelectedCategory('All'); setSearchQuery(''); }}
+                className="mt-4 bg-indigo-600 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors"
+              >
+                Reset Filters
+              </button>
+            </div>
           )}
+        </div>
+      ) : (
+        /* Curriculum Current Affairs for Exam Prep */
+        <div className="space-y-4">
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-4 rounded-2xl flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-amber-600 shrink-0" />
+            <p className="text-xs text-amber-800 dark:text-amber-300 font-medium leading-relaxed">
+              These recurring policy and institutional updates are aligned with the NCHMCT semester syllabus, focusing on ministry schemes, star-classification norms, and hospitality taxation.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {ongoingCurrentAffairs.map(item => (
+              <div
+                key={item.id}
+                className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
+                      Curriculum Standard
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-lg mb-2 text-slate-800 dark:text-white">{item.topic}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{item.details}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </motion.div>
@@ -1183,9 +1546,15 @@ export const GlobalChatView = ({ user }: { user: any }) => {
     const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
     const q = query(chatRef, orderBy('timestamp', 'asc'), limit(50));
     
-    return onSnapshot(q, (snapshot) => {
-      setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    return onSnapshot(
+      q, 
+      (snapshot) => {
+        setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      },
+      (err) => {
+        console.warn("Global chat listener warning:", err);
+      }
+    );
   }, [user]);
 
   const handleSend = async (e: React.FormEvent) => {
@@ -1255,7 +1624,7 @@ export const ProfileView = ({ user, progress, onLogout }: any) => {
           <div className="relative">
             <div className="w-32 h-32 rounded-3xl bg-indigo-600 flex items-center justify-center text-white text-4xl font-bold shadow-xl shadow-indigo-600/20 overflow-hidden">
               {user.photoURL ? (
-                <img src={user.photoURL} alt={user.displayName} className="w-full h-full object-cover" />
+                <img src={user.photoURL} alt={user.displayName} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
               ) : (
                 user.displayName?.charAt(0) || 'U'
               )}
@@ -1264,14 +1633,25 @@ export const ProfileView = ({ user, progress, onLogout }: any) => {
           </div>
           
           <div className="flex-1 text-center md:text-left">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{user.displayName || 'HospiScholar User'}</h1>
-            <p className="text-slate-500 dark:text-slate-400 mb-6">{user.email}</p>
-            <div className="flex flex-wrap justify-center md:justify-start gap-4">
-              <div className="bg-orange-50 dark:bg-orange-900/30 px-4 py-2 rounded-xl flex items-center gap-2 text-orange-600 dark:text-orange-400 font-bold">
-                <Flame className="w-5 h-5" /> {progress.score} Flame Points
+            <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{user.displayName || 'HospiScholar User'}</h1>
+              {user.photoURL && (
+                <span className="p-1 bg-white dark:bg-slate-700 rounded-full shadow-sm" title="Google Account">
+                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
+                </span>
+              )}
+            </div>
+            <p className="text-slate-500 dark:text-slate-400 mb-4">{user.email || 'No email provided'}</p>
+            <div className="flex flex-wrap justify-center md:justify-start gap-3">
+              <div className="bg-orange-50 dark:bg-orange-900/30 px-4 py-2 rounded-xl flex items-center gap-2 text-orange-600 dark:text-orange-400 font-bold text-sm">
+                <Flame className="w-4 h-4" /> {progress.score} Flame Points
               </div>
-              <div className="bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-xl flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold">
-                <CheckCircle className="w-5 h-5" /> {progress.completedChapters.length} Chapters Done
+              <div className="bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-xl flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                <CheckCircle className="w-4 h-4" /> {progress.completedChapters.length} Chapters Done
+              </div>
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-3.5 py-2 rounded-xl font-semibold text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800/40">
+                <ShieldCheck className="w-4 h-4" />
+                {user.isAdmin ? 'Admin Clearance' : (user.isGuest ? 'Guest Pass' : 'Google Authenticated')}
               </div>
             </div>
           </div>

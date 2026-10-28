@@ -2,28 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: /artifacts/hospi-scholar-app/users/{userId}/user_data/progress
-    // Document ID: progress
-    // Fields:
-    //   - score: number (required) - Total points
-    //   - completedChapters: list (required) - Array of strings
-    //
-    // Collection: /artifacts/hospi-scholar-app/public/data/chat_messages
-    // Document ID: auto-generated
-    // Fields:
-    //   - campusId: string (required) - Campus filter
-    //   - text: string (required, max 500) - Message content
-    //   - sender: string (required) - Display name
-    //   - uid: string (required) - User ID
-    //   - time: string (required) - Formatted time
-    //   - timestamp: number (required) - Server timestamp
-    //
-    // ===============================================================
-
-    // ===============================================================
     // Helper Functions
     // ===============================================================
     
@@ -37,8 +15,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (get(/databases/$(database)/documents/artifacts/hospi-scholar-app/users/$(request.auth.uid)/user_data/profile).data.role == 'admin' ||
-          (request.auth.token.email == "arkaprabhoch.2005@gmail.com" && request.auth.token.email_verified == true));
+        ((request.auth.token.email == "arkaprabhoch.2005@gmail.com" && request.auth.token.email_verified == true) ||
+         (request.auth.token.email == "admin@hospischolar.com"));
     }
 
     function isValidProgress(data) {
@@ -49,12 +27,26 @@ service cloud.firestore {
 
     function isValidChatMessage(data) {
       return data.keys().hasAll(['campusId', 'text', 'sender', 'uid', 'time', 'timestamp']) &&
-             data.campusId is string &&
+             data.campusId is string && data.campusId.size() <= 50 &&
              data.text is string && data.text.size() <= 500 &&
-             data.sender is string &&
+             data.sender is string && data.sender.size() <= 100 &&
              data.uid == request.auth.uid &&
              data.time is string &&
              data.timestamp is number;
+    }
+
+    function isValidGuestVisit(data) {
+      return data.keys().hasAll(['name', 'email', 'photoURL', 'method', 'status', 'userAgent', 'timestamp', 'time', 'date', 'uid']) &&
+             data.name is string && data.name.size() <= 120 &&
+             data.email is string && data.email.size() <= 150 &&
+             data.photoURL is string && data.photoURL.size() <= 1000 &&
+             data.method is string && data.method in ['google', 'guest', 'admin'] &&
+             data.status is string && data.status in ['signed_in', 'attempted', 'failed', 'guest_access'] &&
+             data.userAgent is string && data.userAgent.size() <= 500 &&
+             data.timestamp is number &&
+             data.time is string && data.time.size() <= 50 &&
+             data.date is string && data.date.size() <= 50 &&
+             data.uid is string && data.uid.size() <= 128;
     }
 
     // ===============================================================
@@ -72,10 +64,21 @@ service cloud.firestore {
         allow create: if isAuthenticated() && isValidChatMessage(request.resource.data);
         allow update, delete: if isAdmin();
       }
+
+      match /public/data/guest_visits/{visitId} {
+        // Allow visitors and guests to record attendance or entry attempts
+        allow create: if isValidGuestVisit(request.resource.data);
+        // Allow reading guest logs (for visitor counter and tracking dashboard)
+        allow read: if true;
+        // Allow updates if authenticated
+        allow update: if isAuthenticated();
+        // Allow deletion only by admin
+        allow delete: if isAdmin();
+      }
       
       // Default deny
       match /{allPaths=**} {
-        allow read, write: if isAdmin();
+        allow read, write: if false;
       }
     }
   }

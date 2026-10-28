@@ -1,30 +1,123 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { Globe, GraduationCap, ChefHat, Briefcase, Sparkles, Lock, User } from 'lucide-react';
-import { auth, googleProvider, signInWithPopup } from '../firebase';
-
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  GraduationCap, ChefHat, Briefcase, Sparkles, Lock, User, 
+  ArrowRight, ShieldCheck, Globe, AlertCircle, CheckCircle2, Loader2, Sparkle
+} from 'lucide-react';
+import { auth, googleProvider, signInWithPopup, recordGuestVisit } from '../firebase';
 import { Logo, LogoText } from './Logo';
 
-export const LoginPage = ({ onAdminLogin }: { onAdminLogin: () => void }) => {
+interface LoginPageProps {
+  onAdminLogin: () => void;
+  onGuestLogin?: (guestUser: any) => void;
+}
+
+export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [isGuestMode, setIsGuestMode] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [loadingGuest, setLoadingGuest] = useState(false);
 
-  const handleLogin = async () => {
+  const handleGoogleLogin = async () => {
+    setError('');
+    setLoadingGoogle(true);
+
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Login failed:", error);
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result?.user) {
+        // Track the successful Google entry in Firestore
+        await recordGuestVisit({
+          name: result.user.displayName || result.user.email || 'Google Scholar',
+          email: result.user.email || '',
+          photoURL: result.user.photoURL || '',
+          method: 'google',
+          status: 'signed_in',
+          uid: result.user.uid
+        });
+      }
+    } catch (err: any) {
+      console.warn('Google sign-in attempt warning:', err);
+      let userFriendlyMsg = 'Google sign-in could not be completed. You can try again or use Guest Access below.';
+      
+      if (err?.code === 'auth/popup-closed-by-user') {
+        userFriendlyMsg = 'The sign-in popup was closed before completing. Click again to sign in, or enter as Guest.';
+      } else if (err?.code === 'auth/popup-blocked') {
+        userFriendlyMsg = 'Your browser blocked the Google popup. Please allow popups or use instant Guest Access.';
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        userFriendlyMsg = 'Firebase domain configuration notice. You can explore immediately using Guest Access below.';
+      } else if (err?.message) {
+        userFriendlyMsg = err.message;
+      }
+
+      setError(userFriendlyMsg);
+
+      // Track the attempted/failed entry in Firestore
+      await recordGuestVisit({
+        name: 'Guest Attempt',
+        email: '',
+        photoURL: '',
+        method: 'google',
+        status: 'failed',
+        uid: 'attempt',
+        errorDetails: err?.code || err?.message || 'Popup closed or blocked'
+      });
+    } finally {
+      setLoadingGoogle(false);
     }
   };
 
-  const handleManualLogin = (e: React.FormEvent) => {
+  const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'admin' && password === 'admin') {
+    if (username.trim().toLowerCase() === 'admin' && password === 'admin') {
+      await recordGuestVisit({
+        name: 'System Administrator',
+        email: 'admin@hospischolar.com',
+        photoURL: '',
+        method: 'admin',
+        status: 'signed_in',
+        uid: 'admin-id'
+      });
       onAdminLogin();
     } else {
-      setError('Invalid credentials. Hint: admin/admin');
+      setError('Invalid credentials. (Hint: admin / admin or use Google/Guest)');
     }
+  };
+
+  const handleGuestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoadingGuest(true);
+    const displayName = guestName.trim() || 'Guest Scholar';
+    const guestUid = `guest-${Math.random().toString(36).substring(2, 9)}`;
+
+    const guestUserObj = {
+      uid: guestUid,
+      displayName: displayName,
+      email: `${displayName.toLowerCase().replace(/\s+/g, '')}@guest.local`,
+      photoURL: null,
+      isGuest: true,
+      isAnonymous: true
+    };
+
+    // Track the guest entry in Firestore
+    await recordGuestVisit({
+      name: displayName,
+      email: '',
+      photoURL: '',
+      method: 'guest',
+      status: 'guest_access',
+      uid: guestUid
+    });
+
+    if (onGuestLogin) {
+      onGuestLogin(guestUserObj);
+    } else {
+      localStorage.setItem('hospi_scholar_user', JSON.stringify(guestUserObj));
+      window.location.reload();
+    }
+    setLoadingGuest(false);
   };
 
   return (
@@ -36,121 +129,232 @@ export const LoginPage = ({ onAdminLogin }: { onAdminLogin: () => void }) => {
           <LogoText className="text-3xl" />
         </div>
 
-        <div className="max-w-xl relative">
-          {/* Animated Background Blobs */}
+        <div className="max-w-xl relative my-8 md:my-0">
           <div className="absolute -top-20 -left-20 w-64 h-64 bg-indigo-100 dark:bg-indigo-900/20 rounded-full blur-[80px] animate-pulse pointer-events-none"></div>
           <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-purple-100 dark:bg-purple-900/20 rounded-full blur-[80px] animate-pulse delay-700 pointer-events-none"></div>
 
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-7xl font-bold text-slate-900 dark:text-white leading-[0.9] tracking-tight mb-8 relative z-10"
+            className="text-4xl sm:text-5xl md:text-7xl font-bold text-slate-900 dark:text-white leading-[0.95] tracking-tight mb-8 relative z-10"
           >
             Elevate Your <span className="text-indigo-600">Hospitality</span> Career.
           </motion.h2>
-          <p className="text-xl text-slate-500 dark:text-slate-400 leading-relaxed mb-12 relative z-10">
-            The all-in-one platform for IHM students to master academics, share culinary secrets, and track professional growth.
+          <p className="text-lg md:text-xl text-slate-500 dark:text-slate-400 leading-relaxed mb-10 relative z-10">
+            The premier platform for IHM scholars and hospitality leaders to master curriculum, share culinary masteries, and track professional milestones.
           </p>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-4 md:gap-6">
             <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
-              <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+              <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl text-indigo-600 dark:text-indigo-400">
                 <GraduationCap className="w-5 h-5" />
               </div>
-              <span className="font-medium">Academic Roadmap</span>
+              <span className="font-semibold text-sm">Academic Roadmap</span>
             </div>
             <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
-              <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-lg text-orange-600 dark:text-orange-400">
+              <div className="p-2.5 bg-orange-50 dark:bg-orange-900/30 rounded-xl text-orange-600 dark:text-orange-400">
                 <ChefHat className="w-5 h-5" />
               </div>
-              <span className="font-medium">Recipe Exchange</span>
+              <span className="font-semibold text-sm">Recipe Exchange</span>
             </div>
             <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
-              <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+              <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 rounded-xl text-blue-600 dark:text-blue-400">
                 <Briefcase className="w-5 h-5" />
               </div>
-              <span className="font-medium">Internship Logs</span>
+              <span className="font-semibold text-sm">Internship Logs</span>
             </div>
             <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
-              <div className="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
+              <div className="p-2.5 bg-purple-50 dark:bg-purple-900/30 rounded-xl text-purple-600 dark:text-purple-400">
                 <Sparkles className="w-5 h-5" />
               </div>
-              <span className="font-medium">AI Study Tutor</span>
+              <span className="font-semibold text-sm">AI Study Tutor</span>
             </div>
           </div>
         </div>
 
-        <div className="text-sm text-slate-400">
-          © 2026 HospiScholar. Built for the next generation of hoteliers.
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-400 gap-2 border-t border-slate-100 dark:border-slate-800 pt-6">
+          <span>© 2026 HospiScholar. Next-gen hotelier intelligence.</span>
+          <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Guest tracking active
+          </span>
         </div>
       </div>
 
       {/* Right Side: Login Action */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-slate-50 dark:bg-slate-950 relative">
-        <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-500 rounded-full blur-[120px]"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-500 rounded-full blur-[120px]"></div>
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-slate-50 dark:bg-slate-950 relative">
+        <div className="absolute inset-0 overflow-hidden opacity-25 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-indigo-500 rounded-full blur-[130px]"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-purple-500 rounded-full blur-[130px]"></div>
         </div>
 
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 relative z-10"
+          className="w-full max-w-md bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 relative z-10"
         >
           <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Welcome Back</h3>
-            <p className="text-slate-500 dark:text-slate-400">Sign in to access your dashboard</p>
-          </div>
-
-          <form onSubmit={handleManualLogin} className="space-y-4 mb-6">
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input 
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 pl-12 pr-4 py-3 rounded-2xl outline-none focus:border-indigo-500 transition-all dark:text-white"
-              />
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input 
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 pl-12 pr-4 py-3 rounded-2xl outline-none focus:border-indigo-500 transition-all dark:text-white"
-              />
-            </div>
-            {error && <p className="text-xs text-red-500 font-medium px-2">{error}</p>}
-            <button 
-              type="submit"
-              className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
-            >
-              Login
-            </button>
-          </form>
-
-          <div className="relative flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
-            <span className="text-xs font-bold text-slate-400 uppercase">Or continue with</span>
-            <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
-          </div>
-
-          <button 
-            onClick={handleLogin}
-            className="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 py-4 rounded-2xl font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-indigo-200 transition-all shadow-sm"
-          >
-            <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-            Google Account
-          </button>
-
-          <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
-            <p className="text-xs text-slate-400 leading-relaxed">
-              By signing in, you agree to our Terms of Service and Privacy Policy. 
-              Your data is securely stored in our encrypted database.
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+              {isGuestMode ? 'Enter as Guest Scholar' : 'Welcome to HospiScholar'}
+            </h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
+              {isGuestMode ? 'Access the platform with instant guest privileges' : 'Sign in with Google or continue as a guest visitor'}
             </p>
+          </div>
+
+          {/* Error Banner */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex flex-col gap-2"
+              >
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">{error}</span>
+                </div>
+                {!isGuestMode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGuestMode(true);
+                      setError('');
+                    }}
+                    className="self-end text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                  >
+                    Enter as Guest Instead <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!isGuestMode ? (
+            <>
+              {/* Primary: Real Google Sign-In */}
+              <button 
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={loadingGoogle}
+                className="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-400 py-4 px-4 rounded-2xl font-bold text-slate-800 dark:text-slate-100 hover:bg-indigo-50/30 dark:hover:bg-slate-750 transition-all shadow-md group disabled:opacity-75 disabled:cursor-not-allowed mb-4"
+              >
+                {loadingGoogle ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+                    <span>Connecting with Google...</span>
+                  </>
+                ) : (
+                  <>
+                    <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    <span>Sign in with Google</span>
+                  </>
+                )}
+              </button>
+
+              {/* Secondary: Instant Guest Mode Button */}
+              <button
+                type="button"
+                onClick={() => setIsGuestMode(true)}
+                className="w-full flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 py-3 rounded-2xl font-semibold text-sm transition-all mb-6 border border-transparent hover:border-slate-300 dark:hover:border-slate-600"
+              >
+                <Globe className="w-4 h-4 text-indigo-500" />
+                <span>Continue as Guest Visitor</span>
+              </button>
+
+              <div className="relative flex items-center gap-4 mb-6">
+                <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Or Administrator Login</span>
+                <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
+              </div>
+
+              {/* Admin / Username Login */}
+              <form onSubmit={handleManualLogin} className="space-y-3.5 mb-6">
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="text"
+                    placeholder="Username (e.g. admin)"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-100 dark:border-slate-700 pl-11 pr-4 py-3 rounded-2xl text-sm outline-none focus:border-indigo-500 transition-all dark:text-white"
+                  />
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-100 dark:border-slate-700 pl-11 pr-4 py-3 rounded-2xl text-sm outline-none focus:border-indigo-500 transition-all dark:text-white"
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 text-white py-3 rounded-2xl font-bold text-sm transition-all shadow-md"
+                >
+                  Admin Login
+                </button>
+              </form>
+            </>
+          ) : (
+            /* Guest Entry Form */
+            <form onSubmit={handleGuestSubmit} className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 uppercase tracking-wider">
+                  Your Name or Handle
+                </label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="text"
+                    placeholder="e.g. Guest Scholar / Priya"
+                    value={guestName}
+                    onChange={e => setGuestName(e.target.value)}
+                    autoFocus
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 pl-11 pr-4 py-3 rounded-2xl text-sm outline-none focus:border-indigo-500 transition-all dark:text-white font-medium"
+                  />
+                </div>
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  You will enter as a verified guest and be tracked in the live visitor log.
+                </span>
+              </div>
+
+              <button 
+                type="submit"
+                disabled={loadingGuest}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-2xl font-bold text-sm transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
+              >
+                {loadingGuest ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <span>Enter HospiScholar Now</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsGuestMode(false);
+                  setError('');
+                }}
+                className="w-full text-center text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 py-1 transition-colors"
+              >
+                ← Return to Google & Admin Sign-in
+              </button>
+            </form>
+          )}
+
+          <div className="pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <ShieldCheck className="w-4 h-4 text-indigo-500" />
+              <span>Real-time Guest Tracker synced with Firestore</span>
+            </div>
           </div>
         </motion.div>
       </div>

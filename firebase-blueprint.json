@@ -30,6 +30,25 @@
         "timestamp": { "type": "number" }
       },
       "required": ["campusId", "text", "sender", "uid", "time", "timestamp"]
+    },
+    "GuestVisit": {
+      "title": "Guest Visit",
+      "description": "Tracks visitors and guests entering or attempting to enter the site.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Display name of the visitor or guest" },
+        "email": { "type": "string", "description": "Email address if provided or signed in with Google" },
+        "photoURL": { "type": "string", "description": "Avatar URL of the user or guest" },
+        "method": { "type": "string", "description": "Login or entry method: google, guest, or admin" },
+        "status": { "type": "string", "description": "Status of visit: signed_in, attempted, failed, or guest_access" },
+        "userAgent": { "type": "string", "description": "Browser and device user agent summary" },
+        "timestamp": { "type": "number", "description": "Epoch timestamp in milliseconds" },
+        "time": { "type": "string", "description": "Formatted local time string" },
+        "date": { "type": "string", "description": "Formatted local date string" },
+        "uid": { "type": "string", "description": "Firebase Auth UID or guest session identifier" },
+        "errorDetails": { "type": "string", "description": "Error details if login attempt failed" }
+      },
+      "required": ["name", "email", "photoURL", "method", "status", "userAgent", "timestamp", "time", "date", "uid"]
     }
   },
   "firestore": {
@@ -40,6 +59,10 @@
     "/artifacts/hospi-scholar-app/public/data/chat_messages/{messageId}": {
       "schema": "ChatMessage",
       "description": "Global chat messages."
+    },
+    "/artifacts/hospi-scholar-app/public/data/guest_visits/{visitId}": {
+      "schema": "GuestVisit",
+      "description": "Records of guests and visitors entering or attempting to enter the site."
     }
   }
 }
