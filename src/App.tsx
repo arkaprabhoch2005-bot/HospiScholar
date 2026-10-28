@@ -54,18 +54,20 @@ const Header = ({
       <LogoText className="text-lg" />
     </div>
     <div className="flex items-center gap-3">
-      <button 
-        onClick={() => setActiveTab('guest-tracker')}
-        className={`p-2 rounded-full transition-colors flex items-center gap-1.5 text-xs font-semibold ${
-          activeTab === 'guest-tracker' 
-            ? 'bg-indigo-600 text-white' 
-            : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-        }`}
-        title="Live Guest Tracker"
-      >
-        <Users className="w-4 h-4" />
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-      </button>
+      {user?.isAdmin && (
+        <button 
+          onClick={() => setActiveTab('guest-tracker')}
+          className={`p-2 rounded-full transition-colors flex items-center gap-1.5 text-xs font-semibold ${
+            activeTab === 'guest-tracker' 
+              ? 'bg-indigo-600 text-white' 
+              : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+          }`}
+          title="Live Guest Tracker (Admin Only)"
+        >
+          <Users className="w-4 h-4" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        </button>
+      )}
 
       <button 
         onClick={() => setIsDark(!isDark)} 
@@ -89,10 +91,9 @@ const Header = ({
 );
 
 const DesktopSidebar = ({ activeTab, setActiveTab, isDark, setIsDark, user }: any) => {
-  const navItems = [
+  const baseNavItems = [
     { id: 'academics', label: 'Academics', icon: GraduationCap },
     { id: 'notes', label: 'Study Notes', icon: BookOpen, badge: 'Escoffier' },
-    { id: 'guest-tracker', label: 'Guest Tracker', icon: Users, badge: 'Live' },
     { id: 'news', label: 'News', icon: Newspaper },
     { id: 'chat', label: 'Global Chat', icon: MessageSquare },
     { id: 'ai-tutor', label: 'AI Tutor', icon: Sparkles },
@@ -102,6 +103,15 @@ const DesktopSidebar = ({ activeTab, setActiveTab, isDark, setIsDark, user }: an
     { id: 'trivia', label: 'Daily Trivia', icon: Brain },
     { id: 'profile', label: 'My Profile', icon: User }
   ];
+
+  // Guest Tracker is strictly restricted to Admin login
+  const navItems = user?.isAdmin
+    ? [
+        ...baseNavItems.slice(0, 2),
+        { id: 'guest-tracker', label: 'Guest Tracker', icon: Users, badge: 'Admin' },
+        ...baseNavItems.slice(2)
+      ]
+    : baseNavItems;
 
   const userDisplayName = user?.displayName || (user?.email ? user.email.split('@')[0] : (user?.isGuest ? 'Guest Scholar' : 'Hospitality Scholar'));
   const userSubtitle = user?.isAdmin 
@@ -208,11 +218,11 @@ const DesktopSidebar = ({ activeTab, setActiveTab, isDark, setIsDark, user }: an
   );
 };
 
-const MobileBottomNav = ({ activeTab, setActiveTab }: any) => {
+const MobileBottomNav = ({ activeTab, setActiveTab, user }: any) => {
   const navItems = [
     { id: 'academics', label: 'Academics', icon: GraduationCap },
     { id: 'notes', label: 'Notes', icon: BookOpen },
-    { id: 'guest-tracker', label: 'Guests', icon: Users },
+    ...(user?.isAdmin ? [{ id: 'guest-tracker', label: 'Guests', icon: Users }] : []),
     { id: 'news', label: 'News', icon: Newspaper },
     { id: 'chat', label: 'Chat', icon: MessageSquare },
     { id: 'profile', label: 'Profile', icon: User }
@@ -386,7 +396,16 @@ export default function App() {
         if (!isMounted) return;
         clearTimeout(safetyTimer);
         if (u) {
-          setUser(u);
+          const isAdminUser = u.email === 'arkaprabhoch.2005@gmail.com' || u.email === 'admin@hospischolar.com';
+          const enhancedUser = {
+            uid: u.uid,
+            displayName: u.displayName,
+            email: u.email,
+            photoURL: u.photoURL,
+            isAdmin: isAdminUser,
+            isGuest: false
+          };
+          setUser(enhancedUser);
           localStorage.removeItem('hospi_scholar_user');
           // Track active signed-in session in Firestore
           await recordGuestVisit({
@@ -532,6 +551,25 @@ export default function App() {
           />
         );
       case 'guest-tracker':
+        if (!user?.isAdmin) {
+          return (
+            <div className="py-20 text-center max-w-md mx-auto space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800/40 shadow-sm">
+                <ShieldCheck className="w-8 h-8" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Admin Privileges Required</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                The Live Guest Tracker and visitor analytics dashboard is confidential and restricted to system administrators.
+              </p>
+              <button
+                onClick={() => handleTabChange('academics')}
+                className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-600/20"
+              >
+                Return to Academics
+              </button>
+            </div>
+          );
+        }
         return <GuestTrackerView currentUser={user} />;
       case 'news':
         return <NewsFeed />;
@@ -587,9 +625,9 @@ export default function App() {
                {renderContent()}
             </div>
           </div>
-          <Footer onNavigate={handleTabChange} />
+          <Footer onNavigate={handleTabChange} isAdmin={user?.isAdmin} />
        </main>
-       <MobileBottomNav activeTab={activeTab} setActiveTab={handleTabChange} />
+       <MobileBottomNav activeTab={activeTab} setActiveTab={handleTabChange} user={user} />
     </div>
   );
 }

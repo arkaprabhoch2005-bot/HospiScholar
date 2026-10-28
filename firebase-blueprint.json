@@ -62,7 +62,7 @@
     },
     "/artifacts/hospi-scholar-app/public/data/guest_visits/{visitId}": {
       "schema": "GuestVisit",
-      "description": "Records of guests and visitors entering or attempting to enter the site."
+      "description": "Records of guests and visitors entering or attempting to enter the site. Read access strictly restricted to administrators."
     }
   }
 }

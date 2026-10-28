@@ -68,12 +68,10 @@ service cloud.firestore {
       match /public/data/guest_visits/{visitId} {
         // Allow visitors and guests to record attendance or entry attempts
         allow create: if isValidGuestVisit(request.resource.data);
-        // Allow reading guest logs (for visitor counter and tracking dashboard)
-        allow read: if true;
-        // Allow updates if authenticated
-        allow update: if isAuthenticated();
-        // Allow deletion only by admin
-        allow delete: if isAdmin();
+        // Reading guest logs is strictly restricted to administrator login
+        allow read: if isAdmin();
+        // Allow update and deletion only by admin
+        allow update, delete: if isAdmin();
       }
       
       // Default deny

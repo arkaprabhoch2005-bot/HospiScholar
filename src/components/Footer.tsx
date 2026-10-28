@@ -8,9 +8,10 @@ import { Logo, LogoText } from './Logo';
 interface FooterProps {
   onNavigate?: (tab: string) => void;
   className?: string;
+  isAdmin?: boolean;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate, className = '' }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, className = '', isAdmin = false }) => {
   const handleNav = (tab: string) => {
     if (onNavigate) {
       onNavigate(tab);
@@ -111,14 +112,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, className = '' }) =>
                   Live Hospitality News
                 </button>
               </li>
-              <li>
-                <button 
-                  onClick={() => handleNav('guest-tracker')} 
-                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left"
-                >
-                  Live Guest Tracker
-                </button>
-              </li>
+              {isAdmin && (
+                <li>
+                  <button 
+                    onClick={() => handleNav('guest-tracker')} 
+                    className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left flex items-center gap-1.5"
+                  >
+                    <span>Guest Tracker</span>
+                    <span className="text-[9px] bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.2 rounded font-semibold">Admin</span>
+                  </button>
+                </li>
+              )}
               <li>
                 <button 
                   onClick={() => handleNav('recipes')} 

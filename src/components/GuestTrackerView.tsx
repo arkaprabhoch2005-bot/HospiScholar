@@ -20,7 +20,10 @@ export const GuestTrackerView: React.FC<GuestTrackerViewProps> = ({ currentUser 
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   const fetchVisitsOnce = async () => {
-    if (!db) return;
+    if (!db || !currentUser?.isAdmin) {
+      setLoading(false);
+      return;
+    }
     try {
       const visitsRef = collection(db, 'artifacts', appId, 'public', 'data', 'guest_visits');
       const q = query(visitsRef, orderBy('timestamp', 'desc'), limit(100));
@@ -39,7 +42,7 @@ export const GuestTrackerView: React.FC<GuestTrackerViewProps> = ({ currentUser 
   };
 
   useEffect(() => {
-    if (!db) {
+    if (!db || !currentUser?.isAdmin) {
       setLoading(false);
       return;
     }
@@ -86,6 +89,21 @@ export const GuestTrackerView: React.FC<GuestTrackerViewProps> = ({ currentUser 
       }
     };
   }, []);
+
+  // Access Guard: only available during admin login
+  if (!currentUser?.isAdmin) {
+    return (
+      <div className="py-20 text-center max-w-md mx-auto space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800/40 shadow-sm">
+          <Shield className="w-8 h-8" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Admin Privileges Required</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          The Guest Tracker and visitor analytics dashboard is confidential and only accessible during administrator sessions.
+        </p>
+      </div>
+    );
+  }
 
   // Stats computation
   const totalVisits = visits.length;
