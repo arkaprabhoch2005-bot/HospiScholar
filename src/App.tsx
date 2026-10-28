@@ -20,7 +20,13 @@ import {
   SemesterDetail, SubjectDetail, NewsFeed, GlobalChatView, 
   DailyChallengeView, ProfileView, MTPrepView
 } from './components/Views';
+import { StudyNotesCatalogView } from './components/StudyNotesCatalogView';
+import { NoteReaderView } from './components/NoteReaderView';
+import { studyNotes, StudyNote } from './data/notes';
+import { SEO } from './components/SEO';
 import { Logo, LogoText } from './components/Logo';
+import { AboutUsView, ContactUsView, PrivacyPolicyView } from './components/LegalViews';
+import { Footer } from './components/Footer';
 
 interface UserProgress {
   score: number;
@@ -85,6 +91,7 @@ const Header = ({
 const DesktopSidebar = ({ activeTab, setActiveTab, isDark, setIsDark, user }: any) => {
   const navItems = [
     { id: 'academics', label: 'Academics', icon: GraduationCap },
+    { id: 'notes', label: 'Study Notes', icon: BookOpen, badge: 'Escoffier' },
     { id: 'guest-tracker', label: 'Guest Tracker', icon: Users, badge: 'Live' },
     { id: 'news', label: 'News', icon: Newspaper },
     { id: 'chat', label: 'Global Chat', icon: MessageSquare },
@@ -165,6 +172,37 @@ const DesktopSidebar = ({ activeTab, setActiveTab, isDark, setIsDark, user }: an
             </button>
           )
         })}
+
+        <div className="pt-4 mt-4 border-t border-slate-800/80 px-2 space-y-1">
+          <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Legal & Trust
+          </div>
+          <button
+            onClick={() => setActiveTab('about')}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+              activeTab === 'about' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <span>About Us</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('contact')}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+              activeTab === 'contact' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <span>Contact Us</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('privacy')}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+              activeTab === 'privacy' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <span>Privacy Policy</span>
+            <span className="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-800/40 px-1.5 py-0.2 rounded font-semibold">AdSense</span>
+          </button>
+        </div>
       </nav>
     </aside>
   );
@@ -173,8 +211,8 @@ const DesktopSidebar = ({ activeTab, setActiveTab, isDark, setIsDark, user }: an
 const MobileBottomNav = ({ activeTab, setActiveTab }: any) => {
   const navItems = [
     { id: 'academics', label: 'Academics', icon: GraduationCap },
+    { id: 'notes', label: 'Notes', icon: BookOpen },
     { id: 'guest-tracker', label: 'Guests', icon: Users },
-    { id: 'mt-prep', label: 'MT Prep', icon: ShieldCheck },
     { id: 'news', label: 'News', icon: Newspaper },
     { id: 'chat', label: 'Chat', icon: MessageSquare },
     { id: 'profile', label: 'Profile', icon: User }
@@ -208,10 +246,20 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('academics');
   const [selectedSem, setSelectedSem] = useState<number | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
+  const [selectedNote, setSelectedNote] = useState<StudyNote | null>(null);
   const [isDark, setIsDark] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState<UserProgress>({ score: 0, completedChapters: [] });
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSelectedNote(null);
+    if (tab !== 'academics') {
+      setSelectedSubject(null);
+      setSelectedSem(null);
+    }
+  };
 
   useEffect(() => {
     if (isDark) document.documentElement.classList.add('dark');
@@ -336,11 +384,55 @@ export default function App() {
   };
 
   const renderContent = () => {
+    // If a specific note is currently being viewed, show the NoteReaderView
+    if (selectedNote) {
+      return (
+        <NoteReaderView 
+          note={selectedNote} 
+          onBack={() => setSelectedNote(null)} 
+          isCompleted={progress.completedChapters.includes(selectedNote.id)}
+          onToggleComplete={() => {
+            const isDone = progress.completedChapters.includes(selectedNote.id);
+            const newCompleted = isDone 
+              ? progress.completedChapters.filter(id => id !== selectedNote.id)
+              : [...progress.completedChapters, selectedNote.id];
+            updateProgress({
+              ...progress,
+              completedChapters: newCompleted,
+              score: isDone ? Math.max(0, progress.score - 20) : progress.score + 20
+            });
+          }}
+        />
+      );
+    }
+
     switch(activeTab) {
       case 'academics':
-        if (selectedSubject) return <SubjectDetail subject={selectedSubject} onBack={() => setSelectedSubject(null)} progress={progress} updateProgress={updateProgress} />;
-        if (selectedSem) return <SemesterDetail semId={selectedSem} onBack={() => setSelectedSem(null)} onSelectSubject={setSelectedSubject} />;
-        return <AcademicsView onSelectSem={setSelectedSem} />;
+        if (selectedSubject) return (
+          <SubjectDetail 
+            subject={selectedSubject} 
+            onBack={() => setSelectedSubject(null)} 
+            progress={progress} 
+            updateProgress={updateProgress}
+            onSelectNote={setSelectedNote}
+          />
+        );
+        if (selectedSem) return (
+          <SemesterDetail 
+            semId={selectedSem} 
+            onBack={() => setSelectedSem(null)} 
+            onSelectSubject={setSelectedSubject}
+            onSelectNote={setSelectedNote}
+          />
+        );
+        return <AcademicsView onSelectSem={setSelectedSem} onSelectNote={setSelectedNote} />;
+      case 'notes':
+        return (
+          <StudyNotesCatalogView 
+            onSelectNote={setSelectedNote} 
+            completedChapters={progress.completedChapters} 
+          />
+        );
       case 'guest-tracker':
         return <GuestTrackerView currentUser={user} />;
       case 'news':
@@ -359,6 +451,12 @@ export default function App() {
         return <DailyChallengeView progress={progress} updateProgress={updateProgress} />;
       case 'profile':
         return <ProfileView user={user} progress={progress} onLogout={handleLogout} />;
+      case 'about':
+        return <AboutUsView onNavigate={handleTabChange} />;
+      case 'contact':
+        return <ContactUsView />;
+      case 'privacy':
+        return <PrivacyPolicyView />;
       default:
         return <div className="p-20 text-center text-slate-400">Coming soon...</div>;
     }
@@ -379,14 +477,21 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-slate-50/50 dark:bg-slate-950 font-sans overflow-hidden text-slate-900 dark:text-slate-100 transition-colors">
-       <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} isDark={isDark} setIsDark={setIsDark} user={user} />
-       <main className="flex-1 overflow-y-auto pb-24 md:pb-0 relative">
-          <Header isDark={isDark} setIsDark={setIsDark} user={user} activeTab={activeTab} setActiveTab={setActiveTab} />
-          <div className="p-6 md:p-10 max-w-6xl mx-auto">
-             {renderContent()}
+       <SEO 
+         title="HospiScholar" 
+         description="A comprehensive academic and community platform for hospitality students, featuring study resources, news, and real-time collaboration." 
+       />
+       <DesktopSidebar activeTab={activeTab} setActiveTab={handleTabChange} isDark={isDark} setIsDark={setIsDark} user={user} />
+       <main className="flex-1 overflow-y-auto pb-24 md:pb-0 relative flex flex-col justify-between">
+          <div>
+            <Header isDark={isDark} setIsDark={setIsDark} user={user} activeTab={activeTab} setActiveTab={handleTabChange} />
+            <div className="p-6 md:p-10 max-w-6xl mx-auto">
+               {renderContent()}
+            </div>
           </div>
+          <Footer onNavigate={handleTabChange} />
        </main>
-       <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+       <MobileBottomNav activeTab={activeTab} setActiveTab={handleTabChange} />
     </div>
   );
 }

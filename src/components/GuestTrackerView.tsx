@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { collection, query, orderBy, limit, onSnapshot, where, getDocs } from 'firebase/firestore';
 import { db, appId, GuestVisitRecord } from '../firebase';
+import { SEO } from './SEO';
 
 interface GuestTrackerViewProps {
   currentUser: any;
@@ -127,6 +128,10 @@ export const GuestTrackerView: React.FC<GuestTrackerViewProps> = ({ currentUser 
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+      <SEO 
+        title="Front Office Guest Tracker & Live Visitor Log | HospiScholar" 
+        description="Real-time guest tracking dashboard monitoring signed-in Google scholars, guest arrivals, and visit telemetry."
+      />
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

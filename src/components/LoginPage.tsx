@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   GraduationCap, ChefHat, Briefcase, Sparkles, Lock, User, 
-  ArrowRight, ShieldCheck, Globe, AlertCircle, CheckCircle2, Loader2, Sparkle
+  ArrowRight, ShieldCheck, Globe, AlertCircle, CheckCircle2, Loader2, Sparkle, X
 } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup, recordGuestVisit } from '../firebase';
 import { Logo, LogoText } from './Logo';
+import { SEO } from './SEO';
+import { AboutUsView, ContactUsView, PrivacyPolicyView } from './LegalViews';
 
 interface LoginPageProps {
   onAdminLogin: () => void;
@@ -20,6 +22,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin
   const [isGuestMode, setIsGuestMode] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [loadingGuest, setLoadingGuest] = useState(false);
+  const [legalModal, setLegalModal] = useState<'about' | 'contact' | 'privacy' | null>(null);
 
   const handleGoogleLogin = async () => {
     setError('');
@@ -122,6 +125,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row overflow-hidden">
+      <SEO 
+        title="Sign In & Guest Portal | HospiScholar" 
+        description="Access HospiScholar curriculum notes, real-time hospitality industry news, sommelier engine, and hotel management study resources." 
+      />
       {/* Left Side: Branding & Info */}
       <div className="flex-1 p-8 md:p-16 flex flex-col justify-between bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-4">
@@ -172,9 +179,34 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-400 gap-2 border-t border-slate-100 dark:border-slate-800 pt-6">
-          <span>© 2026 HospiScholar. Next-gen hotelier intelligence.</span>
-          <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-400 gap-4 border-t border-slate-100 dark:border-slate-800 pt-6">
+          <div className="flex flex-wrap items-center gap-3 font-medium">
+            <button 
+              type="button"
+              onClick={() => setLegalModal('about')} 
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            >
+              About Us
+            </button>
+            <span>•</span>
+            <button 
+              type="button"
+              onClick={() => setLegalModal('contact')} 
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            >
+              Contact Us
+            </button>
+            <span>•</span>
+            <button 
+              type="button"
+              onClick={() => setLegalModal('privacy')} 
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-1"
+            >
+              <span>Privacy Policy</span>
+              <span className="text-[9px] px-1 py-0.2 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded font-bold">AdSense</span>
+            </button>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             Guest tracking active
           </span>
@@ -350,14 +382,85 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin
             </form>
           )}
 
-          <div className="pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
+          <div className="pt-6 border-t border-slate-100 dark:border-slate-800 text-center space-y-3">
             <div className="flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <ShieldCheck className="w-4 h-4 text-indigo-500" />
               <span>Real-time Guest Tracker synced with Firestore</span>
             </div>
+
+            <div className="flex items-center justify-center gap-3 text-xs text-slate-400 dark:text-slate-500 pt-1">
+              <button 
+                type="button" 
+                onClick={() => setLegalModal('about')} 
+                className="hover:text-indigo-600 dark:hover:text-indigo-400"
+              >
+                About Us
+              </button>
+              <span>•</span>
+              <button 
+                type="button" 
+                onClick={() => setLegalModal('contact')} 
+                className="hover:text-indigo-600 dark:hover:text-indigo-400"
+              >
+                Contact Us
+              </button>
+              <span>•</span>
+              <button 
+                type="button" 
+                onClick={() => setLegalModal('privacy')} 
+                className="hover:text-indigo-600 dark:hover:text-indigo-400"
+              >
+                Privacy Policy
+              </button>
+            </div>
           </div>
         </motion.div>
       </div>
+
+      {/* Legal Dialog Modal */}
+      <AnimatePresence>
+        {legalModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6 md:p-10 flex items-center justify-center overflow-y-auto"
+            onClick={() => setLegalModal(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+            >
+              <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-10">
+                <div className="flex items-center gap-3">
+                  <Logo size="sm" />
+                  <span className="font-bold text-slate-900 dark:text-white text-sm">
+                    {legalModal === 'about' && 'About HospiScholar'}
+                    {legalModal === 'contact' && 'Contact HospiScholar Team'}
+                    {legalModal === 'privacy' && 'Privacy Policy & Google AdSense Disclosures'}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setLegalModal(null)}
+                  className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                  aria-label="Close dialog"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 md:p-10 overflow-y-auto flex-1">
+                {legalModal === 'about' && <AboutUsView onNavigate={() => setLegalModal(null)} />}
+                {legalModal === 'contact' && <ContactUsView />}
+                {legalModal === 'privacy' && <PrivacyPolicyView />}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -280,6 +280,11 @@ app.post('/api/ai/tutor', async (req, res) => {
   }
 });
 
+// Google Search Console Site Verification route
+app.get('/google9d37e6cfa0ce3868.html', (_req, res) => {
+  res.type('text/html').send('google-site-verification: google9d37e6cfa0ce3868.html');
+});
+
 // Setup Vite middleware or static serving
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

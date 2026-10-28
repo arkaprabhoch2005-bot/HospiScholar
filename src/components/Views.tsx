@@ -15,6 +15,8 @@ import { db, appId } from '../firebase';
 import { 
   collection, addDoc, onSnapshot, query, orderBy, limit, doc, deleteDoc, Timestamp 
 } from 'firebase/firestore';
+import { SEO } from './SEO';
+import { studyNotes, StudyNote } from '../data/notes';
 
 export interface Recipe {
   id?: string;
@@ -34,30 +36,88 @@ export interface InternshipEntry {
   learning: string;
 }
 
-export const AcademicsView = ({ onSelectSem }: any) => (
-  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+export const AcademicsView = ({ onSelectSem, onSelectNote }: any) => (
+  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
+    <SEO 
+      title="Academic Roadmap & Study Notes | HospiScholar"
+      description="Select your hospitality semester and access curriculum syllabus, core department modules, and verified study notes."
+    />
+
     <div>
-      <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Academic Roadmap</h1>
-      <p className="text-slate-500 dark:text-slate-400">Select your current semester to access syllabus and study materials.</p>
+      <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Academic Roadmap & Syllabus</h1>
+      <p className="text-slate-500 dark:text-slate-400">Select your current semester to access syllabus, subject modules, and study materials.</p>
     </div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {semesters.map(sem => (
-        <button 
-          key={sem.id}
-          onClick={() => onSelectSem(sem.id)}
-          className="text-left bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-indigo-100 dark:hover:border-indigo-900 transition-all group"
-        >
-          <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xl mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-            S{sem.id}
+
+    {/* Featured Study Notes Quick-Access Strip */}
+    {onSelectNote && (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Curriculum Study Notes & Reading Room</h2>
           </div>
-          <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-1">{sem.title}</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{sem.subtitle}</p>
-          <div className="flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-            <span>{sem.subjects.length} Subjects</span>
-            <ChevronRight className="w-4 h-4" />
-          </div>
-        </button>
-      ))}
+          <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+            Escoffier Curriculum Archive
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {studyNotes.map(note => (
+            <div
+              key={note.id}
+              onClick={() => onSelectNote(note)}
+              className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between text-xs mb-2">
+                  <span className="font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider text-[10px] bg-indigo-50 dark:bg-indigo-900/40 px-2 py-0.5 rounded">
+                    {note.category}
+                  </span>
+                  <span className="text-slate-400 flex items-center gap-1 text-[11px]">
+                    <Clock className="w-3 h-3" /> {note.readTime}
+                  </span>
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  {note.title}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                  {note.summary}
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                <span>{note.subject} (Sem {note.semester})</span>
+                <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                  Read Note <ChevronRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* Semester Roadmap Cards */}
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold text-slate-800 dark:text-white">Semester Roadmaps (1 to 6)</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {semesters.map(sem => (
+          <button 
+            key={sem.id}
+            onClick={() => onSelectSem(sem.id)}
+            className="text-left bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-indigo-100 dark:hover:border-indigo-900 transition-all group"
+          >
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xl mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+              S{sem.id}
+            </div>
+            <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-1">{sem.title}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{sem.subtitle}</p>
+            <div className="flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+              <span>{sem.subjects.length} Subjects</span>
+              <ChevronRight className="w-4 h-4" />
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   </motion.div>
 );
@@ -97,6 +157,10 @@ export const AITutorView = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[75vh] flex flex-col">
+      <SEO 
+        title="Hospitality AI Tutor & Exam Mentor | HospiScholar" 
+        description="Instant hospitality curriculum tutor for culinary formulas, French terminology, hotel accounting, and exam revision." 
+      />
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">AI Hospitality Tutor</h1>
         <p className="text-slate-500 dark:text-slate-400">Ask anything about culinary arts, F&B service, or hotel management.</p>
@@ -179,6 +243,10 @@ export const RecipeExchangeView = ({ user }: { user: any }) => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+      <SEO 
+        title="Culinary Recipe Exchange & Standard Yields | HospiScholar" 
+        description="Share and discover authentic culinary recipes, ingredient yields, and kitchen formulas with fellow hospitality scholars." 
+      />
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Recipe Exchange</h1>
@@ -278,6 +346,10 @@ export const InternshipLogView = ({ user }: { user: any }) => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+      <SEO 
+        title="Industrial Training & Shift Diary | HospiScholar" 
+        description="Daily training logbook for tracking front office, food production, and housekeeping shifts during hotel internships." 
+      />
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">Internship Log</h1>
@@ -361,12 +433,17 @@ export const InternshipLogView = ({ user }: { user: any }) => {
   );
 };
 
-export const SemesterDetail = ({ semId, onBack, onSelectSubject }: any) => {
+export const SemesterDetail = ({ semId, onBack, onSelectSubject, onSelectNote }: any) => {
   const sem = semesters.find(s => s.id === semId);
   if (!sem) return null;
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+      <SEO 
+        title={`Semester ${semId}: ${sem.title} - ${sem.subtitle} | HospiScholar`} 
+        description={sem.description} 
+      />
+
       <button onClick={onBack} className="flex items-center text-slate-500 hover:text-indigo-600 transition-colors font-medium">
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Roadmap
       </button>
@@ -407,9 +484,18 @@ export const SemesterDetail = ({ semId, onBack, onSelectSubject }: any) => {
   );
 };
 
-export const SubjectDetail = ({ subject, onBack, progress, updateProgress }: any) => {
+export const SubjectDetail = ({ subject, onBack, progress, updateProgress, onSelectNote }: any) => {
   const Icon = subject.icon;
   
+  const matchingNotes = studyNotes.filter(n => 
+    n.subject.toLowerCase().includes(subject.name.toLowerCase()) || 
+    subject.name.toLowerCase().includes(n.category.toLowerCase()) ||
+    (subject.name.includes("F&B") && n.id.includes("french-menu")) ||
+    (subject.name.includes("Food Production") && n.id.includes("mother-sauces")) ||
+    (subject.name.includes("Front Office") && n.id.includes("front-office")) ||
+    (subject.name.includes("Accommodation") && n.id.includes("housekeeping"))
+  );
+
   const mockChapters = [
     { id: `${subject.name}_ch1`, title: "Chapter 1: Introduction & Fundamentals", topics: "Basic terminology, history, and scope.", icon: FileText },
     { id: `${subject.name}_ch2`, title: "Chapter 2: Equipment & Layouts", topics: "Identification, safe handling, and workspace design.", icon: FileText },
@@ -427,6 +513,11 @@ export const SubjectDetail = ({ subject, onBack, progress, updateProgress }: any
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+      <SEO 
+        title={`${subject.name} - Study Notes & Syllabus | HospiScholar`} 
+        description={subject.desc} 
+      />
+
       <button onClick={onBack} className="flex items-center text-slate-500 hover:text-indigo-600 transition-colors font-medium">
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Subjects
       </button>
@@ -441,7 +532,53 @@ export const SubjectDetail = ({ subject, onBack, progress, updateProgress }: any
          </div>
       </div>
 
+      {/* Featured In-Depth Curriculum Study Notes for this Subject */}
+      {matchingNotes.length > 0 && onSelectNote && (
+        <div className="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 p-6 md:p-8 rounded-3xl text-white shadow-lg space-y-4 border border-slate-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-indigo-400" />
+              <h2 className="text-lg font-bold">Curriculum Chapter & Syllabus Notes</h2>
+            </div>
+            <span className="text-xs text-indigo-300 font-semibold uppercase tracking-wider">Escoffier Standard</span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            {matchingNotes.map(note => (
+              <div
+                key={note.id}
+                onClick={() => onSelectNote(note)}
+                className="bg-slate-800/90 hover:bg-slate-750 p-5 rounded-2xl border border-slate-700 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+                      {note.category}
+                    </span>
+                    <span className="text-xs text-slate-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-indigo-400" /> {note.readTime}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-white text-base group-hover:text-indigo-300 transition-colors">
+                    {note.title}
+                  </h3>
+                  <p className="text-xs text-slate-300 line-clamp-1">
+                    {note.summary}
+                  </p>
+                </div>
+
+                <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1 self-start sm:self-center shadow-md">
+                  Read Note <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Chapters Checklist */}
       <div className="space-y-4">
+         <h2 className="text-lg font-bold text-slate-800 dark:text-white">Curriculum Modules</h2>
          {mockChapters.map(chapter => {
            const isCompleted = progress.completedChapters.includes(chapter.id);
            return (
@@ -572,6 +709,10 @@ export const NewsFeed = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      <SEO 
+        title="Live Hospitality Industry News & Market Wire | HospiScholar" 
+        description="Real-time global hotel developments, luxury brand expansions, and industry news grounded with Google Search." 
+      />
       {/* Header with Live Status & Controls */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 md:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden border border-slate-800">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -1266,6 +1407,10 @@ export const MTPrepView = () => {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+      <SEO 
+        title="Management Trainee Prep & Sommelier Engine | HospiScholar" 
+        description="Hotel MT interview questions, F&B pairing theory, and Sommelier engine for hotel management students." 
+      />
       <div>
         <h1 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">MT Preparation</h1>
         <p className="text-slate-500 dark:text-slate-400">Master your Management Trainee interviews with curated questions.</p>
@@ -1509,6 +1654,10 @@ export const DailyChallengeView = ({ progress, updateProgress }: any) => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-2xl mx-auto">
+      <SEO 
+        title="Daily Hospitality Trivia Challenge & Flame Points | HospiScholar" 
+        description="Test your knowledge on culinary history, hotel operations, and bar terminology in daily rapid-fire challenges." 
+      />
       <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
         <div className="flex justify-between items-center mb-8">
           <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Question {currentQ + 1} / {dailyQuiz.length}</span>
@@ -1576,6 +1725,10 @@ export const GlobalChatView = ({ user }: { user: any }) => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[70vh] flex flex-col bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+      <SEO 
+        title="Global Hospitality Student Community | HospiScholar" 
+        description="Connect and collaborate with hotel management students across global IHM campuses." 
+      />
       <div className="flex flex-1">
         <div className="w-48 border-r border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 overflow-y-auto hidden sm:block">
           {ihmCampuses.map(campus => (
@@ -1617,6 +1770,10 @@ export const GlobalChatView = ({ user }: { user: any }) => {
 export const ProfileView = ({ user, progress, onLogout }: any) => {
   return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-4xl mx-auto space-y-8">
+      <SEO 
+        title="My Profile & Academic Achievements | HospiScholar" 
+        description="View your HospiScholar progress, completed syllabus chapters, flame points, and global campus rank." 
+      />
       <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-10 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
         
