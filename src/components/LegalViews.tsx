@@ -468,7 +468,7 @@ export const PrivacyPolicyView: React.FC = () => {
             2. Google AdSense & DoubleClick DART Cookie Disclosure
           </div>
           <p className="text-slate-700 dark:text-slate-200 font-medium">
-            Google is one of the third-party vendors on our site. It also uses cookies, known as <strong>DART cookies</strong>, to serve advertisements to our site visitors based upon their visit to HospiScholar and other sites on the internet.
+            HospiScholar participates in the <strong>Google AdSense</strong> publisher network (Publisher ID: <code className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300 font-mono text-xs">ca-pub-9688094336607311</code>). Google is one of the third-party vendors on our site. It uses cookies, known as <strong>DART cookies</strong>, to serve advertisements to our site visitors based upon their visit to HospiScholar and other sites on the internet.
           </p>
           <ul className="list-disc pl-5 space-y-2 text-xs md:text-sm text-slate-600 dark:text-slate-300">
             <li>

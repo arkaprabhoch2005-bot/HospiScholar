@@ -285,6 +285,60 @@ app.get('/google9d37e6cfa0ce3868.html', (_req, res) => {
   res.type('text/html').send('google-site-verification: google9d37e6cfa0ce3868.html');
 });
 
+// Dynamic XML Sitemap for Google Search Console & Web Crawlers
+app.get('/sitemap.xml', (req, res) => {
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const host = req.get('host') || 'ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app';
+  const baseUrl = `${protocol}://${host}`;
+
+  const pages = [
+    { path: '', changefreq: 'daily', priority: '1.0' },
+    { path: '/notes', changefreq: 'daily', priority: '0.95' },
+    { path: '/notes/classical-french-menu-structure-17-courses', changefreq: 'weekly', priority: '0.90' },
+    { path: '/notes/five-mother-sauces-french-cuisine', changefreq: 'weekly', priority: '0.90' },
+    { path: '/notes/front-office-guest-cycle-night-audit', changefreq: 'weekly', priority: '0.90' },
+    { path: '/notes/housekeeping-room-cleaning-sop', changefreq: 'weekly', priority: '0.90' },
+    { path: '/news', changefreq: 'hourly', priority: '0.90' },
+    { path: '/ai-tutor', changefreq: 'daily', priority: '0.85' },
+    { path: '/academics', changefreq: 'weekly', priority: '0.85' },
+    { path: '/mt-prep', changefreq: 'weekly', priority: '0.85' },
+    { path: '/recipes', changefreq: 'daily', priority: '0.80' },
+    { path: '/trivia', changefreq: 'daily', priority: '0.80' },
+    { path: '/internship', changefreq: 'weekly', priority: '0.80' },
+    { path: '/guest-tracker', changefreq: 'daily', priority: '0.75' },
+    { path: '/chat', changefreq: 'daily', priority: '0.70' },
+    { path: '/about', changefreq: 'monthly', priority: '0.70' },
+    { path: '/contact', changefreq: 'monthly', priority: '0.70' },
+    { path: '/privacy', changefreq: 'monthly', priority: '0.60' },
+  ];
+
+  const xmlUrls = pages
+    .map(
+      (p) => `  <url>
+    <loc>${baseUrl}${p.path}</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+  </url>`
+    )
+    .join('\n');
+
+  const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${xmlUrls}
+</urlset>`;
+
+  res.header('Content-Type', 'application/xml');
+  res.send(sitemapXml);
+});
+
+// Robots.txt
+app.get('/robots.txt', (req, res) => {
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const host = req.get('host') || 'ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app';
+  res.type('text/plain').send(`User-agent: *\nAllow: /\n\nSitemap: ${protocol}://${host}/sitemap.xml\n`);
+});
+
 // Setup Vite middleware or static serving
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- Core Landing & Hub -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Study Notes Catalog & Knowledge Hub -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/notes</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <!-- Subject Note: Classical French Menu Structure & 17 Courses -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/notes/classical-french-menu-structure-17-courses</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <!-- Subject Note: 5 Mother Sauces of Classical French Cuisine -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/notes/five-mother-sauces-french-cuisine</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <!-- Subject Note: Front Office Guest Cycle & Night Audit -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/notes/front-office-guest-cycle-night-audit</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <!-- Subject Note: Housekeeping Room Cleaning & Inspection SOP -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/notes/housekeeping-room-cleaning-sop</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <!-- Tool Page: Live Hospitality News with Google Search Grounding -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/news</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <!-- Tool Page: AI Hospitality Academic Tutor -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/ai-tutor</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Tool Page: Academic Roadmap & Semester Syllabi -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/academics</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Tool Page: Management Trainee (MT) Interview Prep -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/mt-prep</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Tool Page: Standard Recipe Exchange & Yield Calculator -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/recipes</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Tool Page: Daily Hospitality Knowledge Challenge & Quiz -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/trivia</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Tool Page: Industrial Training Logbook -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/internship</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Tool Page: Live Guest Tracker & Visitor Analytics -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/guest-tracker</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <!-- Tool Page: Global Student Discussion Lounge -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/chat</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- Institutional: About Us -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/about</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- Institutional: Contact Us -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/contact</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- Institutional: Privacy Policy & AdSense Disclosures -->
+  <url>
+    <loc>https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/privacy</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.60</priority>
+  </url>
+
+</urlset>

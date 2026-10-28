@@ -240,13 +240,64 @@ const MobileBottomNav = ({ activeTab, setActiveTab }: any) => {
   );
 };
 
+// --- URL ROUTING HELPERS FOR SITEMAP & DIRECT LINKS ---
+const parseUrlRoute = (): { tab: string; note: StudyNote | null } => {
+  if (typeof window === 'undefined') return { tab: 'academics', note: null };
+  const pathname = window.location.pathname.replace(/^\/+|\/+$/g, '');
+
+  if (pathname.startsWith('notes/')) {
+    const slug = pathname.replace(/^notes\//, '');
+    const found = studyNotes.find((n) => n.slug === slug || n.id === slug);
+    return { tab: 'notes', note: found || null };
+  }
+
+  const validTabs = [
+    'academics', 'notes', 'guest-tracker', 'news', 'chat', 
+    'ai-tutor', 'recipes', 'internship', 'mt-prep', 'trivia', 
+    'profile', 'about', 'contact', 'privacy'
+  ];
+  if (validTabs.includes(pathname)) {
+    return { tab: pathname, note: null };
+  }
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const qNote = params.get('note');
+    const qTab = params.get('tab');
+    if (qNote) {
+      const found = studyNotes.find((n) => n.slug === qNote || n.id === qNote);
+      return { tab: 'notes', note: found || null };
+    }
+    if (qTab && validTabs.includes(qTab)) {
+      return { tab: qTab, note: null };
+    }
+  } catch {}
+
+  return { tab: 'academics', note: null };
+};
+
+const syncBrowserUrl = (tab: string, note?: StudyNote | null) => {
+  try {
+    let targetPath = '/';
+    if (note) {
+      targetPath = `/notes/${note.slug}`;
+    } else if (tab && tab !== 'academics') {
+      targetPath = `/${tab}`;
+    }
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({ tab, noteSlug: note?.slug }, '', targetPath);
+    }
+  } catch {}
+};
+
 // --- MAIN APP ---
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('academics');
+  const initialRoute = parseUrlRoute();
+  const [activeTab, setActiveTab] = useState(initialRoute.tab);
   const [selectedSem, setSelectedSem] = useState<number | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
-  const [selectedNote, setSelectedNote] = useState<StudyNote | null>(null);
+  const [selectedNote, setSelectedNote] = useState<StudyNote | null>(initialRoute.note);
   const [isDark, setIsDark] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -259,7 +310,54 @@ export default function App() {
       setSelectedSubject(null);
       setSelectedSem(null);
     }
+    syncBrowserUrl(tab, null);
   };
+
+  const handleSelectNote = (note: StudyNote | null) => {
+    setSelectedNote(note);
+    if (note) {
+      syncBrowserUrl('notes', note);
+    } else {
+      syncBrowserUrl(activeTab, null);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = parseUrlRoute();
+      setActiveTab(route.tab);
+      setSelectedNote(route.note);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Instant Guest Scholar access for direct public content URLs (e.g. Google crawlers & deep links)
+  useEffect(() => {
+    if (!loading && !user) {
+      const isDirectContent = 
+        initialRoute.note !== null || 
+        ['notes', 'about', 'privacy', 'contact', 'news', 'academics'].includes(initialRoute.tab);
+      
+      if (isDirectContent) {
+        const guestUser = {
+          uid: 'guest-' + Math.random().toString(36).substring(2, 9),
+          displayName: 'Guest Scholar',
+          isGuest: true,
+          photoURL: null
+        };
+        setUser(guestUser);
+        recordGuestVisit({
+          name: 'Guest Scholar (Direct Content)',
+          email: '',
+          photoURL: '',
+          method: 'guest',
+          status: 'guest_access',
+          uid: guestUser.uid
+        });
+      }
+    }
+  }, [loading, user]);
 
   useEffect(() => {
     if (isDark) document.documentElement.classList.add('dark');
@@ -389,7 +487,7 @@ export default function App() {
       return (
         <NoteReaderView 
           note={selectedNote} 
-          onBack={() => setSelectedNote(null)} 
+          onBack={() => handleSelectNote(null)} 
           isCompleted={progress.completedChapters.includes(selectedNote.id)}
           onToggleComplete={() => {
             const isDone = progress.completedChapters.includes(selectedNote.id);
@@ -414,7 +512,7 @@ export default function App() {
             onBack={() => setSelectedSubject(null)} 
             progress={progress} 
             updateProgress={updateProgress}
-            onSelectNote={setSelectedNote}
+            onSelectNote={handleSelectNote}
           />
         );
         if (selectedSem) return (
@@ -422,14 +520,14 @@ export default function App() {
             semId={selectedSem} 
             onBack={() => setSelectedSem(null)} 
             onSelectSubject={setSelectedSubject}
-            onSelectNote={setSelectedNote}
+            onSelectNote={handleSelectNote}
           />
         );
-        return <AcademicsView onSelectSem={setSelectedSem} onSelectNote={setSelectedNote} />;
+        return <AcademicsView onSelectSem={setSelectedSem} onSelectNote={handleSelectNote} />;
       case 'notes':
         return (
           <StudyNotesCatalogView 
-            onSelectNote={setSelectedNote} 
+            onSelectNote={handleSelectNote} 
             completedChapters={progress.completedChapters} 
           />
         );

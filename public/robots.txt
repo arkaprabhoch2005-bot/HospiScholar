@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# HospiScholar XML Sitemap for Google Search Console and web crawlers
+Sitemap: https://ais-pre-wnvzqrvjiq663vj6grfrkp-483691146929.asia-southeast1.run.app/sitemap.xml

@@ -244,6 +244,15 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, className = '' }) =>
             >
               Privacy Policy
             </button>
+            <a 
+              href="/sitemap.xml" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-1"
+            >
+              <span>XML Sitemap</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
         </div>
 
