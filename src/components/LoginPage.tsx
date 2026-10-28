@@ -206,9 +206,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin
               <span className="text-[9px] px-1 py-0.2 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded font-bold">AdSense</span>
             </button>
           </div>
-          <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Guest tracking active
+          <span className="text-slate-400 text-[11px] font-medium shrink-0">
+            © 2026 HospiScholar
           </span>
         </div>
       </div>
@@ -350,12 +349,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin
                   />
                 </div>
                 <span className="text-[11px] text-slate-400 mt-1 block">
-                  You will enter as a verified guest and be tracked in the live visitor log.
+                  Enter your name to explore curriculum modules and culinary resources.
                 </span>
               </div>
 
               <button 
-                type="submit"
+                type="submit" 
                 disabled={loadingGuest}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-2xl font-bold text-sm transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
               >
@@ -384,8 +383,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin
 
           <div className="pt-6 border-t border-slate-100 dark:border-slate-800 text-center space-y-3">
             <div className="flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <ShieldCheck className="w-4 h-4 text-indigo-500" />
-              <span>Real-time Guest Tracker synced with Firestore</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+              <span>Verified academic and culinary knowledge platform</span>
             </div>
 
             <div className="flex items-center justify-center gap-3 text-xs text-slate-400 dark:text-slate-500 pt-1">
