@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   GraduationCap, ChefHat, Briefcase, Sparkles, Lock, User, 
-  ArrowRight, ShieldCheck, Globe, AlertCircle, CheckCircle2, Loader2, Sparkle, X
+  ArrowRight, ShieldCheck, Globe, AlertCircle, CheckCircle2, Loader2, Sparkle, X, Copy, ExternalLink
 } from 'lucide-react';
-import { auth, googleProvider, signInWithPopup, recordGuestVisit } from '../firebase';
+import { auth, googleProvider, signInWithPopup, recordGuestVisit, firebaseConfig } from '../firebase';
 import { Logo, LogoText } from './Logo';
 import { SEO } from './SEO';
 import { AboutUsView, ContactUsView, PrivacyPolicyView } from './LegalViews';
@@ -18,6 +18,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
+  const [domainCopied, setDomainCopied] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [isGuestMode, setIsGuestMode] = useState(false);
   const [guestName, setGuestName] = useState('');
@@ -26,6 +28,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin
 
   const handleGoogleLogin = async () => {
     setError('');
+    setUnauthorizedDomain(null);
     setLoadingGoogle(true);
 
     try {
@@ -50,7 +53,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin
       } else if (err?.code === 'auth/popup-blocked') {
         userFriendlyMsg = 'Your browser blocked the Google popup. Please allow popups or use instant Guest Access.';
       } else if (err?.code === 'auth/unauthorized-domain') {
-        userFriendlyMsg = 'Firebase domain configuration notice. You can explore immediately using Guest Access below.';
+        const host = typeof window !== 'undefined' ? window.location.hostname : '';
+        setUnauthorizedDomain(host);
+        userFriendlyMsg = '';
       } else if (err?.message) {
         userFriendlyMsg = err.message;
       }
@@ -258,6 +263,90 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAdminLogin, onGuestLogin
                     Enter as Guest Instead <ArrowRight className="w-3 h-3" />
                   </button>
                 )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Dedicated Firebase Authorized Domain Resolver Card */}
+          <AnimatePresence>
+            {unauthorizedDomain && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6 p-5 rounded-2xl bg-indigo-50/90 dark:bg-slate-800/90 border-2 border-indigo-200 dark:border-indigo-800/80 text-xs space-y-3.5 shadow-sm text-left"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-bold text-sm">
+                    <Globe className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <span>Authorize Domain in Firebase</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUnauthorizedDomain(null)}
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+                    title="Dismiss"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs">
+                  Firebase Authentication requires your current deployment domain to be listed in your Firebase project's <strong>Authorized domains</strong> list before Google Sign-In can authenticate visitors.
+                </p>
+
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Domain to Authorize:
+                  </span>
+                  <div className="flex items-center justify-between gap-2 bg-white dark:bg-slate-900 px-3 py-2 rounded-xl border border-indigo-100 dark:border-slate-700 font-mono text-xs text-slate-800 dark:text-slate-200">
+                    <span className="truncate select-all font-medium">{unauthorizedDomain}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(unauthorizedDomain);
+                        setDomainCopied(true);
+                        setTimeout(() => setDomainCopied(false), 2500);
+                      }}
+                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-sans font-semibold shrink-0 transition-colors flex items-center gap-1 shadow-sm"
+                    >
+                      {domainCopied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{domainCopied ? 'Copied!' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-indigo-100/70 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+                  <div className="font-bold text-slate-700 dark:text-slate-200">30-Second Fix in Firebase Console:</div>
+                  <ol className="list-decimal list-inside space-y-0.5 text-slate-500 dark:text-slate-400">
+                    <li>Click <strong>Open Firebase Settings</strong> below</li>
+                    <li>Scroll down to <strong>Authorized domains</strong> ➔ Click <strong>Add domain</strong></li>
+                    <li>Paste <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[10px]">{unauthorizedDomain}</code> and click <strong>Save</strong></li>
+                  </ol>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
+                  <a
+                    href={`https://console.firebase.google.com/project/${firebaseConfig.projectId}/authentication/settings`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-colors shadow-md shadow-indigo-600/20"
+                  >
+                    <span>Open Firebase Settings</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGuestMode(true);
+                      setUnauthorizedDomain(null);
+                      setError('');
+                    }}
+                    className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline text-center py-1"
+                  >
+                    Continue as Guest Scholar →
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

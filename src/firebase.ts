@@ -5,7 +5,7 @@ import { getFirestore, initializeFirestore, collection, addDoc } from 'firebase/
 import firebaseConfigLocal from '../firebase-applet-config.json';
 
 // Use environment variables if available (Vercel), otherwise fallback to local config (AI Studio)
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigLocal.apiKey,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigLocal.authDomain,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigLocal.projectId,
